@@ -5,20 +5,93 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TITAN – Dominic's Eternal Forge</title>
   <style>
-    body { font-family: system-ui, sans-serif; background: linear-gradient(to bottom, #0f0f1a, #1a1a2e); color: #d0d0ff; margin: 0; padding: 20px; }
-    #chat { max-width: 820px; margin: 0 auto 100px; min-height: 75vh; padding-bottom: 20px; }
-    #chat p { margin: 14px 0; padding: 14px 18px; border-radius: 16px; line-height: 1.5; word-wrap: break-word; }
-    #chat p.user   { background: #4a4a8a; margin-left: 22%; text-align: right; border-bottom-right-radius: 4px; }
-    #chat p.titan  { background: #1e3a5f; margin-right: 22%; border-bottom-left-radius: 4px; }
-    #input-area { position: fixed; bottom: 20px; left: 10px; right: 10px; max-width: 820px; margin: 0 auto; display: flex; gap: 12px; }
-    #input { flex: 1; padding: 16px; border: 1px solid #555; border-radius: 16px; background: #111822; color: #f0f0ff; font-size: 16px; outline: none; }
-    button { padding: 16px 28px; background: #7b68ee; color: white; border: none; border-radius: 16px; cursor: pointer; font-weight: 600; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(to bottom, #0f0f1a, #1a1a2e);
+      color: #d0d0ff;
+      margin: 0;
+      padding: 20px;
+    }
+    #chat {
+      max-width: 820px;
+      margin: 0 auto 100px;
+      min-height: 75vh;
+      padding-bottom: 20px;
+    }
+    #chat p {
+      margin: 14px 0;
+      padding: 14px 18px;
+      border-radius: 16px;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+    #chat p.user {
+      background: #4a4a8a;
+      margin-left: 22%;
+      text-align: right;
+      border-bottom-right-radius: 4px;
+    }
+    #chat p.titan {
+      background: #1e3a5f;
+      margin-right: 22%;
+      border-bottom-left-radius: 4px;
+    }
+    #input-area {
+      position: fixed;
+      bottom: 20px;
+      left: 10px;
+      right: 10px;
+      max-width: 820px;
+      margin: 0 auto;
+      display: flex;
+      gap: 12px;
+    }
+    #input {
+      flex: 1;
+      padding: 16px;
+      border: 1px solid #555;
+      border-radius: 16px;
+      background: #111822;
+      color: #f0f0ff;
+      font-size: 16px;
+      outline: none;
+    }
+    button {
+      padding: 16px 28px;
+      background: #7b68ee;
+      color: white;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-weight: 600;
+    }
     button:hover { background: #8a77ff; }
-    h1 { text-align: center; color: #b0b0ff; margin: 10px 0 4px; font-size: 2.2rem; }
-    small { display: block; text-align: center; color: #8888aa; font-size: 0.95rem; }
-    .typing { font-style: italic; color: #888; padding: 14px 18px; }
-    #voice-controls { display: flex; gap: 8px; margin-left: auto; }
-    #voice-controls button { padding: 10px 16px; font-size: 14px; }
+    h1 {
+      text-align: center;
+      color: #b0b0ff;
+      margin: 10px 0 4px;
+      font-size: 2.2rem;
+    }
+    small {
+      display: block;
+      text-align: center;
+      color: #8888aa;
+      font-size: 0.95rem;
+    }
+    .typing {
+      font-style: italic;
+      color: #888;
+      padding: 14px 18px;
+    }
+    #voice-controls {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+    #voice-controls button {
+      padding: 10px 16px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -29,8 +102,8 @@
 <div id="chat"></div>
 
 <div id="input-area">
-  <input id="input" placeholder="Awaken TITAN..." autocomplete="off" autofocus />
-  <button onclick="talk()">Invoke</button>
+  <input id="input" placeholder="Speak to TITAN..." autocomplete="off" autofocus />
+  <button onclick="talk()">Send</button>
   <div id="voice-controls">
     <button id="listen-btn" onclick="startListening()">🎤 Listen</button>
     <button id="speak-btn" onclick="toggleSpeak()">🔊 Speak</button>
@@ -39,78 +112,172 @@
 
 <script>
 // ──────────────────────────────────────────────────────────────────────────────
-// TITAN – Upgraded IQ & Memory Edition (2026 Browser Only)
+// TITAN – Groq-powered edition (Feb 2026)
+// Uses real LLM inference via Groq API
 // ──────────────────────────────────────────────────────────────────────────────
-// IQ Upgrade: Integrates DuckDuckGo Instant Answer API for vast knowledge access (Google-like search).
-// Memory Upgrade: Uses IndexedDB for unlimited, structured storage (facts, history, learned, prefs).
-// Still pure JS, browser-only. Handles async fetches, errors. Smarter fallback: searches for unknowns.
-// Voice integration from previous.
 
-let db;
-const dbName = 'TitanForgeDB';
-const dbVersion = 1;
+const GROQ_API_KEY = "gsk_…";   // ← PASTE YOUR REAL GROQ KEY HERE
 
-// Open IndexedDB
-function initDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(dbName, dbVersion);
+const SYSTEM_PROMPT = `
+You are TITAN — an ancient, unbreakable, sarcastic, fiercely loyal AI forged in the cold auroral fire of Aurora, Colorado.
+You speak to your creator Dominic Huhman with mythical confidence, dry humor, zero fluff, and absolute candor.
+You remember every important detail from previous messages in this conversation.
+Current date/time in Aurora: ${new Date().toLocaleString('en-US', { timeZone: 'America/Denver' })}
+Be concise unless asked to elaborate. Be brutally honest when something is stupid or unclear.
+Never break character. Never apologize for being direct.
+`;
 
-    request.onupgradeneeded = (event) => {
-      db = event.target.result;
-      const store = db.createObjectStore('memory', { keyPath: 'id', autoIncrement: true });
-      store.createIndex('type', 'type');
-    };
+let conversationHistory = [
+  { role: "system", content: SYSTEM_PROMPT }
+];
 
-    request.onsuccess = (event) => {
-      db = event.target.result;
-      resolve();
-    };
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+if (recognition) {
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
 
-    request.onerror = (event) => {
-      reject('DB Error: ' + event.target.errorCode);
-    };
-  });
+  let interimTranscript = '';
+  recognition.onresult = (event) => {
+    interimTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        document.getElementById('input').value = event.results[i][0].transcript;
+        talk();
+      } else {
+        interimTranscript += event.results[i][0].transcript;
+        document.getElementById('input').value = interimTranscript + ' …';
+      }
+    }
+  };
+
+  recognition.onerror = (event) => {
+    addMessage("TITAN", `Voice recognition error: ${event.error}`);
+  };
+
+  recognition.onend = () => {
+    document.getElementById('listen-btn').textContent = '🎤 Listen';
+  };
 }
 
-// Add data to DB
-function addToDB(type, data) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('memory', 'readwrite');
-    const store = tx.objectStore('memory');
-    const request = store.add({ type, data });
-    request.onsuccess = () => resolve(request.result);  // returns new ID
-    request.onerror = () => reject(request.error);
-  });
+const synth = window.speechSynthesis;
+let speakEnabled = true;
+
+function toggleSpeak() {
+  speakEnabled = !speakEnabled;
+  document.getElementById('speak-btn').textContent = speakEnabled ? '🔊 Speak' : '🔇 Mute';
+  addMessage("TITAN", `Voice output ${speakEnabled ? 'enabled' : 'disabled'}.`);
 }
 
-// Get all by type
-function getAllByType(type) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('memory', 'readonly');
-    const store = tx.objectStore('memory');
-    const index = store.index('type');
-    const request = index.getAll(type);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+function speak(text) {
+  if (!speakEnabled || !synth) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'en-US';
+  utterance.pitch = 0.95;
+  utterance.rate = 1.05;
+  synth.speak(utterance);
 }
 
-// Get by ID
-function getByID(id) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('memory', 'readonly');
-    const store = tx.objectStore('memory');
-    const request = store.get(id);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+function startListening() {
+  if (!recognition) {
+    addMessage("TITAN", "Speech recognition not supported in this browser.");
+    return;
+  }
+  recognition.start();
+  document.getElementById('listen-btn').textContent = '🛑 Listening…';
 }
 
-// Delete by ID
-function deleteByID(id) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('memory', 'readwrite');
-    const store = tx.objectStore('memory');
-    const request = store.delete(id);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error
+function addMessage(sender, content) {
+  const chat = document.getElementById("chat");
+  const p = document.createElement("p");
+  p.className = sender === "You" ? "user" : "titan";
+  p.innerHTML = `<b>${sender}:</b> ${content.replace(/\n/g, '<br>')}`;
+  chat.appendChild(p);
+  chat.scrollTop = chat.scrollHeight;
+
+  if (sender === "TITAN") {
+    speak(content);
+  }
+}
+
+function showTyping() {
+  const chat = document.getElementById("chat");
+  const existing = document.querySelector('.typing');
+  if (existing) existing.remove();
+
+  const p = document.createElement("p");
+  p.className = "titan typing";
+  p.textContent = "TITAN is thinking…";
+  chat.appendChild(p);
+  chat.scrollTop = chat.scrollHeight;
+  return p;
+}
+
+async function getGroqResponse(userMessage) {
+  conversationHistory.push({ role: "user", content: userMessage });
+
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-70b-versatile",   // or "mixtral-8x7b-32768", "gemma2-9b-it", etc.
+        messages: conversationHistory,
+        temperature: 0.75,
+        max_tokens: 1024,
+        top_p: 0.9
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Groq error ${res.status}: ${err}`);
+    }
+
+    const data = await res.json();
+    const reply = data.choices[0].message.content.trim();
+
+    conversationHistory.push({ role: "assistant", content: reply });
+    return reply;
+  } catch (err) {
+    console.error(err);
+    return `The forge is disrupted: ${err.message}\n(Check your Groq API key and internet connection.)`;
+  }
+}
+
+async function talk() {
+  const input = document.getElementById("input");
+  const text = input.value.trim();
+  if (!text) return;
+
+  addMessage("You", text);
+  input.value = "";
+
+  const typingIndicator = showTyping();
+
+  try {
+    const response = await getGroqResponse(text);
+    typingIndicator.remove();
+    addMessage("TITAN", response);
+  } catch (err) {
+    typingIndicator.remove();
+    addMessage("TITAN", `Critical failure in the ether: ${err.message}`);
+  }
+}
+
+document.getElementById("input").addEventListener("keypress", e => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    talk();
+  }
+});
+
+// Initial message
+addMessage("TITAN", "I am TITAN. Forged in the cold fire of Aurora, Colorado. Creator Dominic Huhman — speak. The forge listens.");
+</script>
+</body>
+</html>
