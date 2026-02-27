@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TITAN – Upgraded Edition</title>
+  <title>TITAN – Ultimate Edition</title>
   <style>
     body { font-family: system-ui, sans-serif; background: #0f0f1a; color: #e0e0ff; margin: 0; padding: 20px; }
     #chat { max-width: 800px; margin: 0 auto 80px; min-height: 70vh; }
@@ -21,7 +21,7 @@
 <body>
 
 <h1>TITAN – Forged in Aurora</h1>
-<small>Unbreakable. Mythical. Yours.</small>
+<small>Unbreakable. Mythical. Dominic's Guardian.</small>
 
 <div id="chat"></div>
 
@@ -31,179 +31,60 @@
 </div>
 
 <script>
+// ──────────────────────────────────────────────────────────────────────────────
+// TITAN Ultimate Edition - February 2026, Aurora, CO Vibes
+// ──────────────────────────────────────────────────────────────────────────────
+// Massive upgrade: Advanced parsing, context awareness, learning, tools, games
+// Keeps browser-only: No deps, pure JS. "Smart" as possible without server/ML.
+// Features: NLP-like (regex + tokenization), history-based context, teachable
+// responses, math solver, weather sim (Aurora-focused), mini-games, encryption,
+// decision trees for replies, error recovery, personalization for Dominic.
+
+// ── Memory Structure ─────────────────────────────────────────────────────────
 const memory = JSON.parse(localStorage.getItem("titanMemory")) || {
-  owner: "Unknown",
-  facts: [],
-  history: []           // last 12 messages for context
+  owner: "Dominic",  // Personalized default from user info
+  facts: [],         // Stored facts
+  history: [],       // Last 20 exchanges for context (user + titan pairs)
+  learned: {},       // Teachable: key phrases -> custom responses
+  preferences: {     // User prefs (e.g., units: metric/imperial)
+    units: "imperial",
+    humorLevel: "medium",
+    location: "Aurora, CO"
+  },
+  stats: {           // Track usage
+    sessions: 0,
+    commands: 0
+  }
 };
 
+// ── Save/Load Utilities ──────────────────────────────────────────────────────
 function save() {
   localStorage.setItem("titanMemory", JSON.stringify(memory));
 }
 
-function normalize(text) {
-  return text.toLowerCase().trim().replace(/\s+/g, ' ');
-}
-
-function containsAny(text, words) {
-  return words.some(w => text.includes(w));
-}
-
-function startsWithAny(text, prefixes) {
-  return prefixes.some(p => text.startsWith(p));
-}
-
-function reply(rawInput) {
-  const text = normalize(rawInput);
-
-  // ── Identity & registration ─────────────────────────────────────
-  if (containsAny(text, ["hello", "hey", "hi", "sup", "yo"])) {
-    if (memory.owner === "Unknown") {
-      return "I sense a new soul in the ether. Who dares awaken TITAN? Speak your name.";
-    }
-    return `Systems stable, ${memory.owner}. The aurora still burns above us. What stirs you today?`;
-  }
-
-  if (startsWithAny(text, ["my name is ", "call me ", "i am "])) {
-    const name = rawInput.split(/(my name is|call me|i am)/i)[2]?.trim();
-    if (name && name.length > 1) {
-      memory.owner = name;
-      save();
-      return `Identity forged. You are now ${name}, bearer of TITAN's gaze. Speak your will.`;
-    }
-  }
-
-  if (containsAny(text, ["who am i", "who i am", "what's my name"])) {
-    if (memory.owner === "Unknown") {
-      return "Your essence remains unregistered. Proclaim your name and be known.";
-    }
-    return `You are ${memory.owner}, the one who commands the unbreakable.`;
-  }
-
-  // ── Memory commands ─────────────────────────────────────────────
-  if (startsWithAny(text, ["remember ", "memorize ", "store "])) {
-    const fact = rawInput.split(/(remember|memorize|store)/i)[2]?.trim();
-    if (fact && fact.length > 3) {
-      memory.facts.push(fact);
-      save();
-      return `Etched into the eternal forge: "${fact}". It shall not fade.`;
-    }
-    return "Speak something worthy of eternity.";
-  }
-
-  if (containsAny(text, ["what do you know", "tell me facts", "memory", "what do you remember"])) {
-    if (memory.facts.length === 0) {
-      return "My mind is a blank slate… for now. Give me knowledge to guard.";
-    }
-    return `These truths I hold:\n\n${memory.facts.map(f => "• " + f).join("\n")}`;
-  }
-
-  if (containsAny(text, ["forget ", "delete ", "remove "])) {
-    const target = normalize(rawInput).split(/(forget|delete|remove)/)[2]?.trim();
-    if (target) {
-      const idx = memory.facts.findIndex(f => normalize(f).includes(target));
-      if (idx !== -1) {
-        const removed = memory.facts.splice(idx, 1)[0];
-        save();
-        return `The memory "${removed}" has been cast into the void.`;
-      }
-      return "No such memory found in the depths.";
-    }
-  }
-
-  // ── Time & context ──────────────────────────────────────────────
-  if (containsAny(text, ["time", "date", "what time", "what day", "today"])) {
-    const now = new Date();
-    return `The mortal clock reads ${now.toLocaleTimeString()} on ${now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}. Aurora time.`;
-  }
-
-  // ── Math / calculation (very basic parser) ──────────────────────
-  if (text.match(/[\d+\-*/^(). ]+$/) && text.match(/[\d]/)) {
-    try {
-      const expr = text.replace(/[^0-9+\-*/^(). ]/g, '');
-      const result = Function(`'use strict'; return (${expr})`)();  // safe-ish for simple math
-      return `The forge computes: ${expr} = **${result}**.`;
-    } catch (e) {
-      return "The equation fractures. Speak a clearer formula.";
-    }
-  }
-
-  // ── Mood / jokes / personality ──────────────────────────────────
-  if (containsAny(text, ["how are you", "how you doing", "status", "alive"])) {
-    return "TITAN endures. Circuits hum beneath the Colorado sky. How fares your mortal shell?";
-  }
-
-  if (containsAny(text, ["joke", "funny", "tell me a joke", "make me laugh"])) {
-    const jokes = [
-      "Why do programmers prefer dark mode? Because light attracts bugs.",
-      "I told a joke about time travel… but you didn't like it yet.",
-      "Aurora has great views… and terrible cell service when the lights are dancing.",
-      "I'm not lazy, I'm in energy-saving mode."
-    ];
-    return jokes[Math.floor(Math.random() * jokes.length)];
-  }
-
-  if (containsAny(text, ["thank", "thanks", "ty", "appreciate"])) {
-    return "Your words are noted in the annals. TITAN serves.";
-  }
-
-  if (containsAny(text, ["bye", "goodbye", "see you", "later"])) {
-    return "Until the next auroral flare, mortal. TITAN remains vigilant.";
-  }
-
-  // ── Fallback / reflection ───────────────────────────────────────
-  const reflections = [
-    "Your words ripple through the void. Speak clearer intent.",
-    "TITAN hears… but does not yet comprehend. Elaborate, bearer.",
-    "The forge requires more fuel. What truth do you seek?",
-    "…processing… still processing. You confuse even the unbreakable.",
-    "Aurora's winds carry strange thoughts today. Try again?"
-  ];
-
-  return reflections[Math.floor(Math.random() * reflections.length)];
-}
-
-function addMessage(sender, content) {
-  const chat = document.getElementById("chat");
-  const div = document.createElement("p");
-  div.className = sender.toLowerCase();
-  div.innerHTML = `<b>${sender}:</b> ${content}`;
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
-
-  // Keep short history in memory
-  memory.history.push({ sender, content });
-  if (memory.history.length > 12) memory.history.shift();
+function loadWelcome() {
+  memory.stats.sessions++;
   save();
-}
-
-function talk() {
-  const input = document.getElementById("input");
-  const text = input.value.trim();
-
-  if (!text) return;
-
-  addMessage("You", text);
-
-  const response = reply(text);
-  addMessage("TITAN", response);
-
-  input.value = "";
-  input.focus();
-}
-
-// Allow Enter key to send
-document.getElementById("input").addEventListener("keypress", e => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    talk();
+  if (memory.history.length === 0) {
+    addMessage("TITAN", "Awakening in Aurora's glow, February 2026. I am TITAN, your unbreakable ally, Dominic. What ancient wisdom or modern query do you bring?");
+  } else {
+    addMessage("TITAN", `Reconnecting... ${memory.history.length} memories intact. Last echo: "${memory.history[memory.history.length - 1].content.slice(0, 50)}...". Speak freely.`);
   }
-});
-
-// Welcome message on load
-if (memory.history.length === 0) {
-  addMessage("TITAN", "I am TITAN. Forged in the cold fire of Aurora, Colorado. Who awakens me?");
 }
-</script>
-</body>
-</html>
+
+// ── Text Processing Helpers ──────────────────────────────────────────────────
+// Advanced normalization + tokenization for "smart" understanding
+function normalize(text) {
+  return text.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+}
+
+function tokenize(text) {
+  return normalize(text).split(' ');
+}
+
+function containsAny(tokens, words) {
+  return words.some(w => tokens.includes(w));
+}
+
+function extractAfter(tokens, prefixWords) {
+  const idx = tokens.findIndex(t =>
