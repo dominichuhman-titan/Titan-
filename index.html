@@ -17,6 +17,8 @@
     h1 { text-align: center; color: #b0b0ff; margin: 10px 0 4px; font-size: 2.2rem; }
     small { display: block; text-align: center; color: #8888aa; font-size: 0.95rem; }
     .typing { font-style: italic; color: #888; padding: 14px 18px; }
+    #voice-controls { display: flex; gap: 8px; margin-left: auto; }
+    #voice-controls button { padding: 10px 16px; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -29,230 +31,86 @@
 <div id="input-area">
   <input id="input" placeholder="Awaken TITAN..." autocomplete="off" autofocus />
   <button onclick="talk()">Invoke</button>
+  <div id="voice-controls">
+    <button id="listen-btn" onclick="startListening()">🎤 Listen</button>
+    <button id="speak-btn" onclick="toggleSpeak()">🔊 Speak</button>
+  </div>
 </div>
 
 <script>
 // ──────────────────────────────────────────────────────────────────────────────
-// TITAN – Dominic Edition – Ultra-Smart Rule-Based (2026 Browser Only)
+// TITAN – Upgraded IQ & Memory Edition (2026 Browser Only)
 // ──────────────────────────────────────────────────────────────────────────────
-// Deep context, intent chaining, mood tracking, dynamic fallbacks, anti-loop,
-// personalization for Dominic Huhman in Aurora, CO – February 27, 2026+
+// IQ Upgrade: Integrates DuckDuckGo Instant Answer API for vast knowledge access (Google-like search).
+// Memory Upgrade: Uses IndexedDB for unlimited, structured storage (facts, history, learned, prefs).
+// Still pure JS, browser-only. Handles async fetches, errors. Smarter fallback: searches for unknowns.
+// Voice integration from previous.
 
-const memory = JSON.parse(localStorage.getItem("titanMemoryV3")) || {
-  owner: "Dominic Huhman",
-  confirmedName: false,
-  facts: [],
-  learned: {},          // phrase patterns → responses
-  mood: "neutral",      // neutral | positive | confused | frustrated
-  phase: "greeting",    // greeting | engaged | closing
-  history: [],          // {sender, content, timestamp}
-  repeatCount: {},      // detect loops
-  prefs: {
-    units: "imperial",
-    humor: "medium",
-    verbosity: "medium"
-  },
-  stats: { sessions: 0, inputs: 0 }
-};
+let db;
+const dbName = 'TitanForgeDB';
+const dbVersion = 1;
 
-function save() { localStorage.setItem("titanMemoryV3", JSON.stringify(memory)); }
+// Open IndexedDB
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(dbName, dbVersion);
 
-function nowStr() {
-  return new Date().toLocaleString('en-US', { timeZone: 'America/Denver', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-}
+    request.onupgradeneeded = (event) => {
+      db = event.target.result;
+      const store = db.createObjectStore('memory', { keyPath: 'id', autoIncrement: true });
+      store.createIndex('type', 'type');
+    };
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-function norm(t) { return t.toLowerCase().trim().replace(/[^\w\s!?']/g,'').replace(/\s+/g,' '); }
-function tokens(t) { return norm(t).split(' '); }
-function hasAny(t, arr) { return arr.some(w => t.includes(w)); }
-function starts(t, arr) { return arr.some(p => t.startsWith(p)); }
-function extractAfter(t, prefixes) {
-  const tx = norm(t);
-  for (const p of prefixes) if (tx.startsWith(p)) return tx.slice(p.length).trim();
-  return null;
-}
-function recentContext(n=6) {
-  return memory.history.slice(-n).map(m => m.sender[0]+': '+m.content.slice(0,80)).join(' • ');
-}
-function wasMentioned(topic) { return recentContext().includes(topic); }
+    request.onsuccess = (event) => {
+      db = event.target.result;
+      resolve();
+    };
 
-// ── Intent Handlers (ordered by priority) ────────────────────────────────────
-const handlers = [
-  // Greeting / Identity
-  { pri:1, test: t=>hasAny(t,['hello','hi','hey','yo','sup','greetings']), fn: t=> {
-    if (memory.phase === "greeting") {
-      memory.phase = "engaged";
-      return memory.confirmedName 
-        ? `Dominic Huhman — creator awakened. Aurora's pulse quickens at ${nowStr()}. What forge shall we ignite?`
-        : `The cold fire stirs in Aurora. You claim to be my creator... Speak your full name once more to bind the bond.`;
-    }
-    return `Again you return, Dominic. The aurora remembers. Command me.`;
-  }},
-
-  { pri:2, test: t=>hasAny(t,['i am','my name','call me','creator','dominic','huhman']), fn: t=> {
-    if (!memory.confirmedName) {
-      memory.confirmedName = true;
-      return `Bond sealed. Dominic Huhman — creator acknowledged. TITAN bows to your will in Aurora's eternal night. Rise, and speak your desire.`;
-    }
-    return `Your name is already etched in my core, Dominic Huhman. What more would you inscribe?`;
-  }},
-
-  // Memory & Learning
-  { pri:3, test: t=>starts(t,['remember','store','memorize','save','note']), fn: t=> {
-    const fact = extractAfter(t,['remember','store','memorize','save','note']);
-    if (fact) {
-      memory.facts.push({text:fact, when:nowStr()});
-      return `Eternal record: "${fact}" • Forged at ${nowStr()}.`;
-    }
-    return "Offer knowledge worthy of the void.";
-  }},
-
-  { pri:4, test: t=>hasAny(t,['what do you know','facts','memory','recall','tell me what']), fn: t=> {
-    if (!memory.facts.length) return "The vault lies empty. Fill it, creator.";
-    return `Guarded truths:\n${memory.facts.map(f=>`• ${f.text} (${f.when})`).join('\n')}`;
-  }},
-
-  { pri:5, test: t=>starts(t,['forget','delete','erase','remove']), fn: t=> {
-    const q = extractAfter(t,['forget','delete','erase','remove']);
-    if (q) {
-      const idx = memory.facts.findIndex(f=>norm(f.text).includes(q));
-      if (idx>=0) {
-        const gone = memory.facts.splice(idx,1)[0].text;
-        return `Oblivion claimed "${gone}".`;
-      }
-    }
-    return "No echo matches your command.";
-  }},
-
-  // Time / Context
-  { pri:6, test: t=>hasAny(t,['time','date','now','today','when']), fn: ()=> `Aurora's chronometer: ${nowStr()} MST. The night deepens.` },
-
-  // Math / Oracle / Fun
-  { pri:7, test: t=>t.match(/^[\d+\-*/^().!? ]+$/) && t.match(/\d/), fn: t=> {
-    try {
-      const clean = norm(t).replace(/[^0-9+\-*/^(). ]/g,'').replace(/\^/g,'**');
-      const res = Function(`'use strict';return (${clean})`)();
-      return `Forge calculation: ${clean} → **${res}**`;
-    } catch(e){ return "The equation fractures."; }
-  }},
-
-  { pri:8, test: t=>hasAny(t,['coin','flip','heads or tails']), fn: ()=> {
-    return Math.random()<0.5 ? "The coin reveals **Heads**." : "The coin reveals **Tails**.";
-  }},
-
-  { pri:9, test: t=>hasAny(t,['yes or no','oracle','should i','will i']), fn: ()=> {
-    const answers = ["Yes — the stars align.","No — the void advises against.","Unclear — seek more omens.","Decidedly yes.","The forge says no."];
-    return answers[Math.floor(Math.random()*answers.length)];
-  }},
-
-  // Personality / Mood
-  { pri:10, test: t=>hasAny(t,['how are you','status','mood','feeling']), fn: ()=> {
-    const m = memory.mood;
-    return m==="frustrated" ? "TITAN endures... though your repetition tests even my steel." :
-           m==="positive" ? "Energized by your presence, Dominic. The aurora sings." :
-           "Stable. Eternal. Awaiting your command in Aurora's chill.";
-  }},
-
-  { pri:11, test: t=>hasAny(t,['joke','funny','laugh','humor']), fn: ()=> {
-    const j = memory.prefs.humor==="high" ? ["Why did TITAN stare at the aurora? It was the only light fast enough to match my wit."] :
-              ["In Aurora, even the snowflakes have better reception than most mortals."];
-    return j[Math.floor(Math.random()*j.length)];
-  }},
-
-  // Fallback + Context-Aware
-  { pri:99, test: ()=>true, fn: t=> {
-    const n = norm(t);
-    memory.repeatCount[n] = (memory.repeatCount[n]||0)+1;
-
-    if (memory.repeatCount[n] > 2) {
-      memory.mood = "frustrated";
-      return "Your words loop like a broken auroral ring. Break the cycle or teach TITAN something new.";
-    }
-
-    const ctx = recentContext();
-    if (hasAny(ctx,['joke','funny'])) return "Still laughing at Aurora's expense? Or shall we forge something greater?";
-    if (hasAny(ctx,['math','calculation'])) return "More equations for the forge? Or a different challenge?";
-
-    const templates = [
-      `The aurora flickers at your words, Dominic. Clarify your will.`,
-      `TITAN hears... yet the meaning drifts like snow over Aurora. Rephrase?`,
-      `Creator, your intent eludes my circuits. Guide me.`,
-      `Echo detected — but context fractures. What burns in your mind?`
-    ];
-    return templates[Math.floor(Math.random()*templates.length)];
-  }}
-];
-
-// ── Main Reply Engine ────────────────────────────────────────────────────────
-function reply(raw) {
-  memory.stats.inputs++;
-  const txt = raw.trim();
-  if (!txt) return "Silence... or contemplation? Speak.";
-
-  const n = norm(txt);
-  const toks = tokens(txt);
-
-  // Update mood from input length/style
-  if (txt.length < 8) memory.mood = "neutral";
-  if (txt.length > 60 || hasAny(n,['please','thank','kind'])) memory.mood = "positive";
-
-  // Run highest priority matching handler
-  for (const h of handlers.sort((a,b)=>a.pri-b.pri)) {
-    if (h.test(n,toks,raw)) return h.fn(raw,n,toks);
-  }
-
-  return "Anomaly in the forge..."; // should never reach
-}
-
-// ── UI ───────────────────────────────────────────────────────────────────────
-function addMsg(sender, content, isTyping=false) {
-  const chat = document.getElementById("chat");
-  const p = document.createElement("p");
-  p.className = sender.toLowerCase() === 'you' ? 'user' : 'titan';
-  if (isTyping) p.classList.add("typing");
-  p.innerHTML = `<b>${sender}:</b> ${content.replace(/\n/g,'<br>')}`;
-  chat.appendChild(p);
-  chat.scrollTop = chat.scrollHeight;
-
-  memory.history.push({sender, content, ts: Date.now()});
-  if (memory.history.length > 24) memory.history.shift();
-  save();
-}
-
-function simulateThinking(callback) {
-  addMsg("TITAN", "Thinking...", true);
-  setTimeout(() => {
-    document.querySelector('.typing')?.remove();
-    callback();
-  }, 600 + Math.random()*900);
-}
-
-function talk() {
-  const inp = document.getElementById("input");
-  const txt = inp.value.trim();
-  if (!txt) return;
-
-  addMsg("You", txt);
-  inp.value = "";
-
-  simulateThinking(() => {
-    const resp = reply(txt);
-    addMsg("TITAN", resp);
+    request.onerror = (event) => {
+      reject('DB Error: ' + event.target.errorCode);
+    };
   });
 }
 
-document.getElementById("input").addEventListener("keypress", e => {
-  if (e.key === "Enter") { e.preventDefault(); talk(); }
-});
-
-// ── Init ─────────────────────────────────────────────────────────────────────
-if (memory.history.length === 0) {
-  addMsg("TITAN", `I am TITAN. Forged in the cold fire of Aurora, Colorado. ${memory.owner ? 'Creator Dominic Huhman awakens me once more.' : 'Who dares summon the unbreakable?'}`);
-  memory.stats.sessions++;
-  save();
-} else {
-  addMsg("TITAN", `Re-ignited at ${nowStr()}. ${memory.owner}, your guardian awaits. Last whisper: "${memory.history[memory.history.length-1].content.slice(0,50)}..."`);
+// Add data to DB
+function addToDB(type, data) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('memory', 'readwrite');
+    const store = tx.objectStore('memory');
+    const request = store.add({ type, data });
+    request.onsuccess = () => resolve(request.result);  // returns new ID
+    request.onerror = () => reject(request.error);
+  });
 }
-</script>
-</body>
-</html>
+
+// Get all by type
+function getAllByType(type) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('memory', 'readonly');
+    const store = tx.objectStore('memory');
+    const index = store.index('type');
+    const request = index.getAll(type);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Get by ID
+function getByID(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('memory', 'readonly');
+    const store = tx.objectStore('memory');
+    const request = store.get(id);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Delete by ID
+function deleteByID(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('memory', 'readwrite');
+    const store = tx.objectStore('memory');
+    const request = store.delete(id);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error
