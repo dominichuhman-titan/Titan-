@@ -1,42 +1,119 @@
-# smart_smart_ai_assistant.py
-# An ultra-intelligent AI assistant starter for GitHub
-# Author: Dominic Huhman | Version: 0.1.0
+"""
+Titan - Ultra Smart AI Assistant
+Author: Dominic Huhman
+Version: 0.2.0
+Description: Mega integrated AI assistant with memory, persona, and GPT-powered reasoning.
+"""
 
 import openai
 import os
 import json
+from pathlib import Path
 
-# Load your OpenAI API key from environment variables
+# =====================
+# CONFIG
+# =====================
+CONFIG = {
+    "assistant_name": "Titan",
+    "personality": "ultra-smart",
+    "model": "gpt-5-mini",
+    "memory_file": "memory.json"
+}
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-class SmartSmartAI:
-    def __init__(self, name="Titan", personality="ultra-smart"):
+# =====================
+# MEMORY MODULE
+# =====================
+class Memory:
+    def __init__(self, file_path=CONFIG["memory_file"]):
+        self.file_path = Path(file_path)
+        if not self.file_path.exists():
+            self.save([])
+
+    def load(self):
+        with open(self.file_path, "r") as f:
+            return json.load(f)
+
+    def save(self, memory_list):
+        with open(self.file_path, "w") as f:
+            json.dump(memory_list, f, indent=4)
+
+    def add(self, entry):
+        memory = self.load()
+        memory.append(entry)
+        self.save(memory)
+
+    def summarize(self, last_n=5):
+        memory = self.load()
+        return " | ".join([m["content"] for m in memory[-last_n:]])
+
+# =====================
+# PERSONA MODULE
+# =====================
+class Persona:
+    def __init__(self, name=CONFIG["assistant_name"], personality=CONFIG["personality"]):
         self.name = name
         self.personality = personality
-        self.memory = []
+
+# =====================
+# THINKER MODULE
+# =====================
+class SmartSmartAI:
+    def __init__(self):
+        self.persona = Persona()
+        self.memory = Memory()
+        self.model = CONFIG["model"]
 
     def think(self, prompt):
-        """
-        Sends prompt to GPT API for ultra-smart responses.
-        Stores the context in memory.
-        """
-        self.memory.append({"role": "user", "content": prompt})
-        response = openai.ChatCompletion.create(
-            model="gpt-5-mini",
-            messages=self.memory
-        )
-        answer = response['choices'][0]['message']['content']
-        self.memory.append({"role": "assistant", "content": answer})
+        self.memory.add({"role": "user", "content": prompt})
+        messages = self.memory.load()
+        try:
+            response = openai.ChatCompletion.create(
+                model=self.model,
+                messages=messages
+            )
+            answer = response['choices'][0]['message']['content']
+        except Exception as e:
+            answer = f"[Error generating response: {str(e)}]"
+        self.memory.add({"role": "assistant", "content": answer})
         return answer
 
     def reset_memory(self):
-        self.memory = []
+        self.memory.save([])
 
-if __name__ == "__main__":
+    def show_summary(self):
+        return self.memory.summarize()
+
+# =====================
+# UTILITY FUNCTIONS
+# =====================
+def clean_input(text):
+    return text.strip()
+
+# =====================
+# MAIN PROGRAM
+# =====================
+def main():
     titan = SmartSmartAI()
-    print("Welcome, Dominic! Titan is ready to think at maximum intelligence.")
+    print(f"Welcome, Dominic! {titan.persona.name} is ready to think at maximum intelligence.")
+    print("Type 'exit' or 'quit' to stop Titan.\n")
+
     while True:
         prompt = input("You: ")
+        prompt = clean_input(prompt)
         if prompt.lower() in ["exit", "quit"]:
+            print(f"{titan.persona.name}: Logging off. See you soon!")
             break
-        print("Titan:", titan.think(prompt))
+        elif prompt.lower() == "summary":
+            print(f"{titan.persona.name} Memory Summary: {titan.show_summary()}")
+        elif prompt.lower() == "reset":
+            titan.reset_memory()
+            print(f"{titan.persona.name}: Memory reset complete.")
+        else:
+            response = titan.think(prompt)
+            print(f"{titan.persona.name}: {response}")
+
+if __name__ == "__main__":
+    main()
+     
