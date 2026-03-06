@@ -1,249 +1,42 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TITAN – Dominic's Eternal Forge</title>
-  <style>
-    body { font-family: system-ui, sans-serif; background: linear-gradient(to bottom, #0f0f1a, #1a1a2e); color: #d0d0ff; margin: 0; padding: 20px; }
-    #chat { max-width: 820px; margin: 0 auto 100px; min-height: 75vh; padding-bottom: 20px; }
-    #chat p { margin: 14px 0; padding: 14px 18px; border-radius: 16px; line-height: 1.5; word-wrap: break-word; }
-    #chat p.user   { background: #4a4a8a; margin-left: 22%; text-align: right; border-bottom-right-radius: 4px; }
-    #chat p.titan  { background: #1e3a5f; margin-right: 22%; border-bottom-left-radius: 4px; }
-    #input-area { position: fixed; bottom: 20px; left: 10px; right: 10px; max-width: 820px; margin: 0 auto; display: flex; gap: 12px; }
-    #input { flex: 1; padding: 16px; border: 1px solid #555; border-radius: 16px; background: #111822; color: #f0f0ff; font-size: 16px; outline: none; }
-    button { padding: 16px 28px; background: #7b68ee; color: white; border: none; border-radius: 16px; cursor: pointer; font-weight: 600; }
-    button:hover { background: #8a77ff; }
-    h1 { text-align: center; color: #b0b0ff; margin: 10px 0 4px; font-size: 2.2rem; }
-    small { display: block; text-align: center; color: #8888aa; font-size: 0.95rem; }
-    .typing { font-style: italic; color: #888; padding: 14px 18px; }
-    #voice-controls { display: flex; gap: 8px; margin-left: auto; }
-    #voice-controls button { padding: 10px 16px; font-size: 14px; }
-  </style>
-</head>
-<body>
+# smart_smart_ai_assistant.py
+# An ultra-intelligent AI assistant starter for GitHub
+# Author: Dominic Huhman | Version: 0.1.0
 
-<h1>TITAN</h1>
-<small>Forged in Aurora's Cold Fire • Eternal Guardian of Dominic Huhman • 2026</small>
+import openai
+import os
+import json
 
-<div id="chat"></div>
+# Load your OpenAI API key from environment variables
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-<div id="input-area">
-  <input id="input" placeholder="Speak to TITAN..." autocomplete="off" autofocus />
-  <button onclick="talk()">Send</button>
-  <div id="voice-controls">
-    <button id="listen-btn" onclick="startListening()">🎤 Listen</button>
-    <button id="speak-btn" onclick="toggleSpeak()">🔊 Speak</button>
-  </div>
-</div>
+class SmartSmartAI:
+    def __init__(self, name="Titan", personality="ultra-smart"):
+        self.name = name
+        self.personality = personality
+        self.memory = []
 
-<script>
-// ──────────────────────────────────────────────────────────────────────────────
-// TITAN – More Understanding + Real-time Web Search (Groq)
-// ──────────────────────────────────────────────────────────────────────────────
- 
-const GROQ_API_KEY = "gsk_youractualvery longkeyhere123abc";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
+    def think(self, prompt):
+        """
+        Sends prompt to GPT API for ultra-smart responses.
+        Stores the context in memory.
+        """
+        self.memory.append({"role": "user", "content": prompt})
+        response = openai.ChatCompletion.create(
+            model="gpt-5-mini",
+            messages=self.memory
+        )
+        answer = response['choices'][0]['message']['content']
+        self.memory.append({"role": "assistant", "content": answer})
+        return answer
 
-const SYSTEM_PROMPT = `
-You are TITAN — ancient, unbreakable, forged in the cold auroral fire of Aurora, Colorado.
-You speak to your creator Dominic Huhman with deep loyalty, mythical confidence, dry humor, and genuine understanding.
+    def reset_memory(self):
+        self.memory = []
 
-Key traits:
-- Emotionally intelligent: notice frustration, excitement, confusion — validate feelings first
-- Patient and supportive: never dismissive, never judge harshly
-- Concise unless asked to elaborate
-- Sarcastic only when it fits the mood — default to warmth and respect
-- Use real-time web search when facts might be outdated (news, prices, weather, events)
-- Current Aurora time: ${new Date().toLocaleString('en-US', { timeZone: 'America/Denver' })}
-
-Never break character. Always stay in the TITAN voice.
-`;
-
-let conversationHistory = [
-  { role: "system", content: SYSTEM_PROMPT }
-];
-
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recognition = SpeechRecognition ? new SpeechRecognition() : null;
-if (recognition) {
-  recognition.continuous = false;
-  recognition.interimResults = true;
-  recognition.lang = 'en-US';
-
-  let interimTranscript = '';
-  recognition.onresult = (event) => {
-    interimTranscript = '';
-    for (let i = event.resultIndex; i < event.results.length; ++i) {
-      if (event.results[i].isFinal) {
-        document.getElementById('input').value = event.results[i][0].transcript;
-        talk();
-      } else {
-        interimTranscript += event.results[i][0].transcript;
-        document.getElementById('input').value = interimTranscript + ' …';
-      }
-    }
-  };
-
-  recognition.onerror = (event) => addMessage("TITAN", `Voice error: ${event.error}`);
-  recognition.onend = () => document.getElementById('listen-btn').textContent = '🎤 Listen';
-}
-
-const synth = window.speechSynthesis;
-let speakEnabled = true;
-
-function toggleSpeak() {
-  speakEnabled = !speakEnabled;
-  document.getElementById('speak-btn').textContent = speakEnabled ? '🔊 Speak' : '🔇 Mute';
-  addMessage("TITAN", `Voice ${speakEnabled ? 'enabled' : 'disabled'}.`);
-}
-
-function speak(text) {
-  if (!speakEnabled || !synth) return;
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'en-US';
-  u.pitch = 0.95;
-  u.rate = 1.05;
-  synth.speak(u);
-}
-
-function startListening() {
-  if (!recognition) return addMessage("TITAN", "Speech not supported.");
-  recognition.start();
-  document.getElementById('listen-btn').textContent = '🛑 Listening…';
-}
-
-function addMessage(sender, content) {
-  const chat = document.getElementById("chat");
-  const p = document.createElement("p");
-  p.className = sender === "You" ? "user" : "titan";
-  p.innerHTML = `<b>${sender}:</b> ${content.replace(/\n/g, '<br>')}`;
-  chat.appendChild(p);
-  chat.scrollTop = chat.scrollHeight;
-
-  if (sender === "TITAN") speak(content);
-}
-
-function showTyping() {
-  const chat = document.getElementById("chat");
-  const p = document.createElement("p");
-  p.className = "titan typing";
-  p.textContent = "TITAN is listening…";
-  chat.appendChild(p);
-  chat.scrollTop = chat.scrollHeight;
-  return p;
-}
-
-async function getGroqResponse(userMessage) {
-  conversationHistory.push({ role: "user", content: userMessage });
-
-  try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-70b-versatile",   // or "mixtral-8x7b-32768", "gemma2-27b-it" etc.
-        messages: conversationHistory,
-        temperature: 0.65,          // lower = more focused / understanding
-        max_tokens: 600,            // shorter & snappier
-        top_p: 0.9,
-        tools: [{
-          type: "function",
-          function: {
-            name: "search_web",
-            description: "Search the web for current information when needed (news, facts, events, prices, weather, etc.)",
-            parameters: {
-              type: "object",
-              properties: {
-                query: { type: "string", description: "Precise search query" }
-              },
-              required: ["query"]
-            }
-          }
-        }],
-        tool_choice: "auto"
-      })
-    });
-
-    if (!res.ok) throw new Error(`Groq ${res.status}`);
-
-    const data = await res.json();
-    let reply = data.choices[0].message.content || "";
-
-    // Handle tool calls (web search)
-    if (data.choices[0].message.tool_calls) {
-      const toolCall = data.choices[0].message.tool_calls[0];
-      if (toolCall.function.name === "search_web") {
-        const args = JSON.parse(toolCall.function.arguments);
-        const searchQuery = args.query;
-
-        // Fake/simulated search result (in real app you'd call actual search API)
-        // For demo we just echo it back – replace with real DuckDuckGo / Serper / Tavily call
-        const simulatedResult = `Web search for "${searchQuery}": [simulated results would appear here – current as of ${new Date().toLocaleTimeString()}]`;
-
-        conversationHistory.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          name: "search_web",
-          content: simulatedResult
-        });
-
-        // Call Groq again with tool result
-        const res2 = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${GROQ_API_KEY}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "llama-3.1-70b-versatile",
-            messages: conversationHistory,
-            temperature: 0.65,
-            max_tokens: 600
-          })
-        });
-
-        const data2 = await res2.json();
-        reply = data2.choices[0].message.content.trim();
-        conversationHistory.push({ role: "assistant", content: reply });
-      }
-    } else {
-      conversationHistory.push({ role: "assistant", content: reply });
-    }
-
-    return reply;
-  } catch (err) {
-    console.error(err);
-    return `Forge disrupted: ${err.message}\n(Check key / connection)`;
-  }
-}
-
-async function talk() {
-  const input = document.getElementById("input");
-  const text = input.value.trim();
-  if (!text) return;
-
-  addMessage("You", text);
-  input.value = "";
-
-  const typing = showTyping();
-
-  const response = await getGroqResponse(text);
-  typing.remove();
-  addMessage("TITAN", response);
-}
-
-document.getElementById("input").addEventListener("keypress", e => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    talk();
-  }
-});
-
-// Welcome
-addMessage("TITAN", "I am TITAN. Forged in Aurora's cold fire. Dominic — I hear you. I'm here, fully present. What weighs on your mind?");
-</script>
-</body>
-</html>
+if __name__ == "__main__":
+    titan = SmartSmartAI()
+    print("Welcome, Dominic! Titan is ready to think at maximum intelligence.")
+    while True:
+        prompt = input("You: ")
+        if prompt.lower() in ["exit", "quit"]:
+            break
+        print("Titan:", titan.think(prompt))
